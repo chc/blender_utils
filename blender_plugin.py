@@ -106,6 +106,11 @@ class THPSMDLImport(bpy.types.Operator):
 			if m["checksum"] == checksum:
 				return m
 		return 0
+	def FindBoneByName(self, bones, name):
+		for bone in bones:
+			if bone['name'] == name:
+				return bone
+		return 0
 	def ReadMesh(self, mesh):
 		print("Name: {}".format(mesh["name"]))
 		print("Num Verts: {}".format(len(mesh["vertices"])))
@@ -127,16 +132,6 @@ class THPSMDLImport(bpy.types.Operator):
 
 		uvlay = blenmesh.tessface_uv_textures.new()
 
-#		for i, f in enumerate(mesh["indices"][0]):
-#			blender_tface = blenmesh.tessface_uv_textures[0].data[i]
-#			print("Face: {} {}".format(i,f))
-#			print("Face: {} {} {}".format(mesh["uvs"][f[0]][0], mesh["uvs"][f[1]][1], mesh["uvs"][f[2]][2]))
-#			blender_tface.uv1 = (mesh["uvs"][f[0]][0], mesh["uvs"][f[0]][1])
-#			blender_tface.uv2 = (mesh["uvs"][f[1]][0], mesh["uvs"][f[1]][1])
-#			blender_tface.uv3 = (mesh["uvs"][f[2]][0], mesh["uvs"][f[2]][1])
-
-
-
 		for i, f in enumerate(uvlay.data):
 			index = mesh["indices"][0][i]
 			for j, uv in enumerate(f.uv):
@@ -144,20 +139,59 @@ class THPSMDLImport(bpy.types.Operator):
 				print("Max: {}".format(len(mesh["uvs"])))
 				uv[0] = mesh["uvs"][index[j]][0]
 				uv[1] = mesh["uvs"][index[j]][1]
-#		blenmesh.from_pydata(mesh["vertices"], [], mesh["indices"][0])
-#		uvtex = blenmesh.uv_textures.new()
-#		uvtex.name = 'UVLayer'
-#		for face in mesh["indices"][0]:
-#			print("UVS: {}".format(face))
-#			for i, f in enumerate(uvtex.data):
-#				print("F IS: {}".format(f))
-#				for j, uv in enumerate(f.uv):
-#					uv[0], uv[1], uv[2] = (0.0,1.0, 1.2)
-#		uv_layer = blenmesh.loops.layers.uv.new()
+
+		#add object to scene
 		blenmesh.update()
 		blenmesh.validate()
 		nobj = bpy.data.objects.new(mesh["name"], blenmesh)
 		scn.objects.link(nobj)
+
+
+		print("Skel: {}".format(mesh["skeleton"]))
+
+		# Create Armature and Object
+		bpy.ops.object.add(type='ARMATURE', enter_editmode=True)
+		object = bpy.context.object
+		object.name = 'armguy'
+		armature = object.data
+		armature.name = 'armguy'
+
+		for the_bone in mesh["skeleton"]:
+			bone = armature.edit_bones.new(the_bone["name"])
+			bone.tail = Vector([0,0,0.1]) # if you won't do it, bone
+			# will have zero lenght and will be removed immediately by Blender
+			
+			#if 'parent' not in the_bone:
+			#matrix = Matrix(the_bone["matrix"])
+			#matrix = matrix.inverted()
+			#matrix.transpose()
+				
+			# assign matrix to bone
+			#bone.transform(matrix)
+
+		for the_bone in mesh["skeleton"]:
+			if 'parent' in the_bone:
+				armature.edit_bones[the_bone['name']].parent = armature.edit_bones[the_bone['parent']]
+				parent = self.FindBoneByName(mesh["skeleton"], the_bone['parent'])
+				#armature.edit_bones[the_bone['name']].use_inherit_rotation = True
+				#armature.edit_bones[the_bone['name']].use_local_location = True
+				#armature.edit_bones[the_bone['name']].use_connect = True
+				#child_mat = Matrix(the_bone["matrix"])
+				#child_mat.transpose()
+				#child_mat = child_mat.inverted()
+				#the_mat = Matrix(parent["matrix"])
+				#the_mat.transpose()
+				#the_mat = the_mat.inverted()
+				#child_mat = the_mat * child_mat
+				#armature.edit_bones[the_bone['name']].transform(child_mat)
+
+		for the_bone in mesh["skeleton"]:
+			matrix = Matrix(the_bone["matrix"])
+			matrix.transpose()
+			matrix = matrix.inverted()
+			armature.edit_bones[the_bone['name']].transform(matrix)
+
+
 		return nobj
 
 
