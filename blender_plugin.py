@@ -1,10 +1,10 @@
 bl_info = {
-    "name": "THPS Scene/Mdl import Format (.mdl)",
-    "author": "Andrew \"CHCNiZ\" Learn",
+    "name": "JSON import Format (.json)",
+    "author": "CHC",
     "version": (0, 0, 1),
     "blender": (2, 63, 0),
-    "location": "File > Import > THPS Model Format (.mdl/.scn)",
-    "description": "Import THPS Models (XBox/PC Format only) (.mdl/.scn)",
+    "location": "File > Import > JSON Format (.json)",
+    "description": "Import JSON",
     "warning": "Alpha software",
     "category": "Import",
 }
@@ -175,8 +175,9 @@ class THPSMDLImport(bpy.types.Operator):
 			bones = mesh["bone_indices"][0][vwidx]
 			for vwsidx, vwsval in enumerate(wval):
 				bone_idx = bones[vwsidx]
-				the_bone = mesh["skeleton"][bone_idx]
-				nobj.vertex_groups[bone_idx].add([vwidx], vwsval, 'REPLACE')
+				if bone_idx != 0:
+					the_bone = mesh["skeleton"][bone_idx]
+					nobj.vertex_groups[bone_idx].add([vwidx], 1.0 - vwsval, 'ADD')
 		return nobj
 
 
