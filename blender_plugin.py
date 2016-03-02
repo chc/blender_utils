@@ -46,6 +46,8 @@ class THPSMDLImport(bpy.types.Operator):
 	
 	def execute(self, context):
 		#self.filepath = bpy.path.ensure_ext(self.filepath, ".mdl")
+		self.materialTable = {}
+		bpy.context.scene.cursor_location = (0.0, 0.0, 0.0)
 		self.ReadScene()
 		return {'FINISHED'}
 
@@ -58,11 +60,11 @@ class THPSMDLImport(bpy.types.Operator):
 	#private
 	def ReadMaterial(self, material_data):
 		material = bpy.data.materials.new(material_data["name"])
-		print("The Path: {}".format("/home/andy/blender/jizzy/" + material_data["name"]))
+		print("The Path: {}".format("/Users/chc/code/assettool/jizzy/" + material_data["name"]))
 		textures = []
 		for t in material_data["textures"]:
 			tex = bpy.data.textures.new(t["name"], type ="IMAGE")
-			path = "/home/andy/blender/jizzy/" + t["name"] + ".png"
+			path = "/Users/chc/code/assettool/jizzy/" + t["name"] + ".png"
 			img = bpy.data.images.load(path)
 			tex.image = img
 
@@ -72,7 +74,8 @@ class THPSMDLImport(bpy.types.Operator):
 			mtex.texture = tex
 			material.use_transparency = True
 			material.transparency_method = 'Z_TRANSPARENCY'
-		material["checksum"] = material_data["checksum"]
+
+		self.materialTable[material_data["checksum"]] = material
 		return material
 	def ReadScene(self):
 		scnfile = open(self.filepath, "rb")
@@ -86,9 +89,9 @@ class THPSMDLImport(bpy.types.Operator):
 		print("Num Meshes: {}".format(len(data["meshes"])))
 		materials = []
 		for m in data["materials"]:
-			materials.append(self.ReadMaterial(m))
+			self.ReadMaterial(m)
 		nobj = self.ReadMesh(data["meshes"][0])
-		mat = self.FindMaterialByChecksum(materials, data["meshes"][0]["material_checksum"])
+		mat = self.FindMaterialByChecksum(data["meshes"][0]["material_checksum"])
 		if mat:
 			nobj.data.materials.append(mat)
 		#self.ReadMaterial(nobj, data["materials"], data["meshes"][0])
@@ -100,12 +103,8 @@ class THPSMDLImport(bpy.types.Operator):
 		for v in data:
 			ret.append(Vector([v[0],v[1],v[2]]))
 		return ret
-	def FindMaterialByChecksum(self, materials, checksum):
-		print("I must find: {}".format(checksum))
-		for m in materials:
-			if m["checksum"] == checksum:
-				return m
-		return 0
+	def FindMaterialByChecksum(self, checksum):
+		return self.materialTable[checksum]
 	def FindBoneByName(self, bones, name):
 		for bone in bones:
 			if bone['name'] == name:
@@ -135,8 +134,6 @@ class THPSMDLImport(bpy.types.Operator):
 		for i, f in enumerate(uvlay.data):
 			index = mesh["indices"][0][i]
 			for j, uv in enumerate(f.uv):
-				print("The Index: {}".format(index))
-				print("Max: {}".format(len(mesh["uvs"])))
 				uv[0] = mesh["uvs"][index[j]][0]
 				uv[1] = mesh["uvs"][index[j]][1]
 
@@ -147,7 +144,7 @@ class THPSMDLImport(bpy.types.Operator):
 		scn.objects.link(nobj)
 
 
-		print("Skel: {}".format(mesh["skeleton"]))
+		#print("Skel: {}".format(mesh["skeleton"]))
 
 		# Create Armature and Object
 		bpy.ops.object.add(type='ARMATURE', enter_editmode=True)
@@ -156,34 +153,17 @@ class THPSMDLImport(bpy.types.Operator):
 		armature = object.data
 		armature.name = 'armguy'
 
+		#create bones
 		for the_bone in mesh["skeleton"]:
+			nobj.vertex_groups.new(name=the_bone["name"])
 			bone = armature.edit_bones.new(the_bone["name"])
-			bone.tail = Vector([0,0,0.1]) # if you won't do it, bone
-			# will have zero lenght and will be removed immediately by Blender
-			
-			#if 'parent' not in the_bone:
-			#matrix = Matrix(the_bone["matrix"])
-			#matrix = matrix.inverted()
-			#matrix.transpose()
-				
-			# assign matrix to bone
-			#bone.transform(matrix)
+			bone.tail = Vector([0,0,0.1]) # if you won't do it, the bone will have zero lenghtand will be removed immediately by Blender
 
+		#map parents
 		for the_bone in mesh["skeleton"]:
 			if 'parent' in the_bone:
 				armature.edit_bones[the_bone['name']].parent = armature.edit_bones[the_bone['parent']]
 				parent = self.FindBoneByName(mesh["skeleton"], the_bone['parent'])
-				#armature.edit_bones[the_bone['name']].use_inherit_rotation = True
-				#armature.edit_bones[the_bone['name']].use_local_location = True
-				#armature.edit_bones[the_bone['name']].use_connect = True
-				#child_mat = Matrix(the_bone["matrix"])
-				#child_mat.transpose()
-				#child_mat = child_mat.inverted()
-				#the_mat = Matrix(parent["matrix"])
-				#the_mat.transpose()
-				#the_mat = the_mat.inverted()
-				#child_mat = the_mat * child_mat
-				#armature.edit_bones[the_bone['name']].transform(child_mat)
 
 		for the_bone in mesh["skeleton"]:
 			matrix = Matrix(the_bone["matrix"])
@@ -191,7 +171,12 @@ class THPSMDLImport(bpy.types.Operator):
 			matrix = matrix.inverted()
 			armature.edit_bones[the_bone['name']].transform(matrix)
 
-
+		for vwidx, wval in enumerate(mesh["weights"][0]):
+			bones = mesh["bone_indices"][0][vwidx]
+			for vwsidx, vwsval in enumerate(wval):
+				bone_idx = bones[vwsidx]
+				the_bone = mesh["skeleton"][bone_idx]
+				nobj.vertex_groups[bone_idx].add([vwidx], vwsval, 'REPLACE')
 		return nobj
 
 
