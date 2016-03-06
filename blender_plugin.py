@@ -171,13 +171,26 @@ class THPSMDLImport(bpy.types.Operator):
 			matrix = matrix.inverted()
 			armature.edit_bones[the_bone['name']].transform(matrix)
 
-		for vwidx, wval in enumerate(mesh["weights"][0]):
-			bones = mesh["bone_indices"][0][vwidx]
-			for vwsidx, vwsval in enumerate(wval):
-				bone_idx = bones[vwsidx]
-				if bone_idx != 0:
-					the_bone = mesh["skeleton"][bone_idx]
-					nobj.vertex_groups[bone_idx].add([vwidx], 1.0 - vwsval, 'ADD')
+		for vidx in range(0, len(mesh["vertices"])):
+			bones = mesh["bone_indices"][0][vidx]
+			weights = mesh["weights"][0][vidx]
+			print("Vertex: {}".format(vidx))
+			print("Data: {} {}".format(bones, weights))
+			for widx in range(0, len(weights)):
+				bone_idx = bones[widx]
+				if bone_idx == 0:
+					break
+				weight = weights[widx]
+				nobj.vertex_groups[bone_idx].add([vidx], weight, 'ADD')
+#		for vwidx, wval in enumerate(mesh["weights"][0]):
+#			bones = mesh["bone_indices"][0][vwidx]
+#			print("Vertex: {}".format(vwidx))
+#			print("Data: {} {}".format(bones, wval))
+#			for vwsidx, vwsval in enumerate(wval):
+#				bone_idx = bones[vwsidx]
+#				the_bone = mesh["skeleton"][bone_idx]
+#				print("Bone: {} ({}): {}".format(bone_idx, the_bone["name"], vwsval))
+#				nobj.vertex_groups[bone_idx].add([vwidx], vwsval, 'ADD')
 		return nobj
 
 
