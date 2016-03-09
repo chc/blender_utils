@@ -1,9 +1,9 @@
 bl_info = {
-    "name": "JSON import Format (.json)",
+    "name": "JSON Model Format (.json)",
     "author": "CHC",
     "version": (0, 0, 1),
     "blender": (2, 63, 0),
-    "location": "File > Import > JSON Format (.json)",
+    "location": "File > Import > JSON Model (.json)",
     "description": "Import JSON",
     "warning": "Alpha software",
     "category": "Import",
@@ -38,7 +38,7 @@ class THPSMDLImport(bpy.types.Operator):
 	"""Export selection to THPS MDL"""
 
 	bl_idname = "export_scene.mdl"
-	bl_label = "Import THPS MDL"
+	bl_label = "Import JSON scene"
 
 	filepath = StringProperty(subtype='FILE_PATH')
 	
@@ -195,7 +195,7 @@ class THPSMDLImport(bpy.types.Operator):
 
 
 def menu_func(self, context):
-    self.layout.operator(THPSMDLImport.bl_idname, text="THPS Model (.mdl)")
+    self.layout.operator(THPSMDLImport.bl_idname, text="JSON Mesh (.json)")
 
 
 def register():
